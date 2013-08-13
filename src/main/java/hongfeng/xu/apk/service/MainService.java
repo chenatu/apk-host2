@@ -65,6 +65,7 @@ public class MainService {
             //check if exists
             if (redisStore.exists(md5)) {
                 LOG.info("already exists");
+                input.close();
                 return false;
             }
             
@@ -85,7 +86,7 @@ public class MainService {
                     throw new IOException(e);
                 }
             }
-            
+            input.close();
             return true;
         } finally {
             input.close();
