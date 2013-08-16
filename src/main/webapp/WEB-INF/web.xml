@@ -2,7 +2,7 @@
 <web-app xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
     version="2.5">
-    <display-name>Apk Host</display-name>
+    <display-name>Apk Host2</display-name>
     <servlet>
         <servlet-name>Dispatcher</servlet-name>
         <servlet-class>hongfeng.xu.apk.Dispatcher</servlet-class>

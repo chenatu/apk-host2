@@ -48,7 +48,7 @@ public class MainService {
         try {
             Path tmpPath = new Path("tmp/" + file.getOriginalFilename().hashCode()
                     + "-" + System.currentTimeMillis());
-            //temporary save to HDFS
+            //temporary save to HDFS, and input is closed
             hdfsStore.put(input, tmpPath);
             
             //compute md5
@@ -56,21 +56,26 @@ public class MainService {
             InputStream tmpInput = null;
             try {
                 tmpInput = hdfsStore.open(tmpPath);
-                md5 = md5Utils.md5(input);
+                md5 = md5Utils.md5(tmpInput);
+                LOG.info("computing md5 "+file.getOriginalFilename()+" " + md5);
             } finally {
-                IOUtils.closeQuietly(tmpInput);
-                hdfsStore.remove(tmpPath);
+                tmpInput.close();
+                //hdfsStore.remove(tmpPath);
             }
             
             //check if exists
             if (redisStore.exists(md5)) {
-                LOG.info("already exists");
-                input.close();
+                LOG.info(tmpPath+" " + md5 + " already exists");
+                hdfsStore.remove(tmpPath);
                 return false;
             }
             
             Path finalPath = new Path("apk/" + md5 + ".apk");
-            hdfsStore.put(input, finalPath);
+            LOG.info(tmpPath+" " + md5 + " is a new apk");
+            tmpInput = hdfsStore.open(tmpPath);
+            hdfsStore.put(tmpInput, finalPath);
+            //tmpInput is closed now and start to delete tmpPath
+            hdfsStore.remove(tmpPath);
             //save ApkInfo to redis
             try {
                 String fileName = file.getOriginalFilename();
@@ -86,7 +91,6 @@ public class MainService {
                     throw new IOException(e);
                 }
             }
-            input.close();
             return true;
         } finally {
             input.close();

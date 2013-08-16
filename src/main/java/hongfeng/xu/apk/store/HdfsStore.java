@@ -9,11 +9,13 @@ import java.io.InputStream;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.io.IOUtils;
+//import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.FileStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,13 +49,16 @@ public class HdfsStore {
             out = fs.create(path);
             byte[] buf = new byte[8192];
             int len;
-            while((len=input.read(buf, 0, buf.length)) != -1) {
+            /*while((len=input.read(buf, 0, buf.length)) != -1) {
                 LOG.info("len = " + len);
                 out.write(buf, 0, len);
-            }
+            }*/
+            IOUtils.copyBytes(input, out, 4096, true);
         } finally {
-            IOUtils.closeQuietly(out);
-            IOUtils.closeQuietly(fs);
+        	FileStatus fileStatus = fs.getFileStatus(path);
+            LOG.info(fileStatus.getPath()+" size: "+fileStatus.getLen());
+            //out.close();
+            fs.close();
         }
     }
     
@@ -62,7 +67,7 @@ public class HdfsStore {
         try {
             return fs.exists(path);
         } finally {
-            IOUtils.closeQuietly(fs);
+            fs.close();
         }
     }
     
@@ -73,7 +78,7 @@ public class HdfsStore {
                 return fs.delete(path, true);
             }
         } finally {
-            IOUtils.closeQuietly(fs);
+            fs.close();
         }
         return false;
     }

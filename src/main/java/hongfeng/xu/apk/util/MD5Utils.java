@@ -4,6 +4,8 @@
  */
 package hongfeng.xu.apk.util;
 
+import hongfeng.xu.apk.service.MainService;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -13,6 +15,8 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,6 +25,7 @@ import org.springframework.stereotype.Component;
  */
 @Component("md5Utils")
 public class MD5Utils {
+	private static final Logger LOG = LoggerFactory.getLogger(MD5Utils.class);
     
     public String md5(File file) throws IOException {
         MessageDigest md = null;
@@ -47,10 +52,15 @@ public class MD5Utils {
         }
         byte[] buf = new byte[1024];
         int len;
+        int totallen = 0;
         while((len = input.read(buf, 0, buf.length)) != -1) {
+        	totallen += len;
+        	LOG.info("buf: "+new String(buf));
             md.update(buf, 0, len);
         }
+        LOG.info("total length: "+String.valueOf(totallen));
         byte[] digest = md.digest();
+        LOG.info("md5: "+getHashtext(digest));
         return getHashtext(digest);
     }
     
