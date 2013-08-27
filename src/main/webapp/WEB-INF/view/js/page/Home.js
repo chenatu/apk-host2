@@ -15,6 +15,10 @@ define(function (require, exports, module) {
             this.form = new UploadForm({
                 el: '.form-upload'
             });
+            var BatchedUploadForm = require('../form/BatchedUploadForm');
+            this.form = new BatchedUploadForm({
+                el: '.batched-upload'
+            });
         },
         
     });

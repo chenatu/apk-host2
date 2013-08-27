@@ -4,10 +4,16 @@
  */
 package hongfeng.xu.apk.store;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 import javax.annotation.PostConstruct;
+
+
+
 
 //import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.io.IOUtils;
@@ -62,6 +68,29 @@ public class HdfsStore {
         }
     }
     
+    public void put(File file, Path path) throws IOException{
+    	conf = new Configuration();
+    	String hadoopHome = new String("/home/chenatu/extend/hadoop-1.1.2");
+        conf.addResource(new Path(hadoopHome + "/conf/core-site.xml"));
+        conf.addResource(new Path(hadoopHome + "/conf/hdfs-site.xml"));
+    	System.out.println("called put");
+    	System.out.println(hadoopHome);
+    	FileSystem fs = borrowFS();
+        FSDataOutputStream out = null;
+        try {
+            out = fs.create(path);
+            byte[] buf = new byte[8192];
+            int len;
+            IOUtils.copyBytes(new BufferedInputStream(new FileInputStream(file)), out, 4096, true);
+        } finally {
+        	FileStatus fileStatus = fs.getFileStatus(path);
+            //LOG.info(fileStatus.getPath()+" size: "+fileStatus.getLen());
+            //out.close();
+            fs.close();
+        }
+    	
+    }
+    
     public boolean exists(Path path) throws IOException {
         FileSystem fs = borrowFS();
         try {
@@ -83,7 +112,36 @@ public class HdfsStore {
         return false;
     }
     
+    public boolean remove2(Path path) throws IOException {
+    	conf = new Configuration();
+    	String hadoopHome = new String("/home/chenatu/extend/hadoop-1.1.2");
+        conf.addResource(new Path(hadoopHome + "/conf/core-site.xml"));
+        conf.addResource(new Path(hadoopHome + "/conf/hdfs-site.xml"));
+    	System.out.println("called remove2");
+    	System.out.println(hadoopHome);
+        FileSystem fs = borrowFS();
+        try {
+            if (fs.exists(path)) {
+                return fs.delete(path, true);
+            }
+        } finally {
+            fs.close();
+        }
+        return false;
+    }
+    
     public InputStream open(Path path) throws IOException {
+        FileSystem fs = borrowFS();
+        return fs.open(path);
+    }
+    
+    public InputStream open2(Path path) throws IOException {
+    	conf = new Configuration();
+    	String hadoopHome = new String("/home/chenatu/extend/hadoop-1.1.2");
+        conf.addResource(new Path(hadoopHome + "/conf/core-site.xml"));
+        conf.addResource(new Path(hadoopHome + "/conf/hdfs-site.xml"));
+    	System.out.println("called open2");
+    	System.out.println(hadoopHome);
         FileSystem fs = borrowFS();
         return fs.open(path);
     }

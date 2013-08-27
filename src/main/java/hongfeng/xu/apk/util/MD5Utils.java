@@ -55,7 +55,7 @@ public class MD5Utils {
         int totallen = 0;
         while((len = input.read(buf, 0, buf.length)) != -1) {
         	totallen += len;
-        	LOG.info("buf: "+new String(buf));
+        	//LOG.info("buf: "+new String(buf));
             md.update(buf, 0, len);
         }
         LOG.info("total length: "+String.valueOf(totallen));

@@ -44,6 +44,14 @@ public class MainController extends BaseController {
         return "";
     }
     
+    @RequestMapping(value="/batchedupload", method=RequestMethod.POST)
+    @ResponseBody
+    public String batchedupload(@RequestParam("apkDir") String apkDir) throws IOException {
+        LOG.info("Batched upload: "+apkDir);
+        mainService.addDirApks(apkDir);
+        return "";
+    }
+    
     public static class UploadApkForm {
         private MultipartFile apkFile;
 

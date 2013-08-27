@@ -8,6 +8,8 @@ import hongfeng.xu.apk.data.Protobuf.ApkInfo;
 
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import redis.clients.jedis.Jedis;
@@ -20,9 +22,10 @@ import com.google.protobuf.InvalidProtocolBufferException;
  */
 @Repository("redisStore")
 public class RedisStore {
-
-    public void put(ApkInfo info) {
-        borrowJedis().set(info.getMd5().getBytes(), info.toByteArray());
+	private static final Logger LOG = LoggerFactory.getLogger(RedisStore.class);
+    public void put(ApkInfo info) throws InvalidProtocolBufferException {
+    	System.out.println("called redisput");
+        borrowJedis().lpush(info.getMd5().getBytes(), info.toByteArray());
     }
     
     public boolean exists(String md5) {
