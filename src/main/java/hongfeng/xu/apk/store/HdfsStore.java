@@ -7,10 +7,15 @@ package hongfeng.xu.apk.store;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 import javax.annotation.PostConstruct;
+
+
+
 
 
 
@@ -18,6 +23,7 @@ import javax.annotation.PostConstruct;
 //import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -53,8 +59,8 @@ public class HdfsStore {
         FSDataOutputStream out = null;
         try {
             out = fs.create(path);
-            byte[] buf = new byte[8192];
-            int len;
+            //byte[] buf = new byte[8192];
+            //int len;
             /*while((len=input.read(buf, 0, buf.length)) != -1) {
                 LOG.info("len = " + len);
                 out.write(buf, 0, len);
@@ -148,5 +154,23 @@ public class HdfsStore {
     
     private FileSystem borrowFS() throws IOException {
         return FileSystem.get(conf);
+    }
+    
+    //download file in HDFS to local FS
+    public boolean get(Path hdfsPath, Path localPath){
+    	try {
+			if(!exists(hdfsPath)){
+				LOG.info("HDFS file " + hdfsPath.toString() +" does not exist!");
+				return false;
+			}
+			FileSystem fs = borrowFS();
+			FSDataInputStream hdfsInput = fs.open(hdfsPath);
+			OutputStream localOutput = new FileOutputStream(localPath.toString());
+			IOUtils.copyBytes(hdfsInput, localOutput, 4096, true);
+		} catch (IOException e) {
+			LOG.error(e.getMessage());
+			return false;
+		}
+    	return true;
     }
 }

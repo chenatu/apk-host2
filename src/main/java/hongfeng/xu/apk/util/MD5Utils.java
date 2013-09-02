@@ -4,8 +4,6 @@
  */
 package hongfeng.xu.apk.util;
 
-import hongfeng.xu.apk.service.MainService;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

@@ -10,15 +10,24 @@ import hongfeng.xu.apk.store.RedisStore;
 import hongfeng.xu.apk.util.MD5Utils;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.python.core.PyFunction;
+import org.python.core.PyInteger;
+import org.python.core.PyObject;
+import org.python.util.PythonInterpreter;
 
 /**
  * @author xuhongfeng
@@ -28,7 +37,10 @@ import org.springframework.web.multipart.MultipartFile;
 public class MainService {
 	private static final Logger LOG = LoggerFactory
 			.getLogger(MainService.class);
-
+	
+	@Value("${androguard.home}")
+    private String androhome;
+	
 	@Autowired
 	private HdfsStore hdfsStore;
 
@@ -37,7 +49,9 @@ public class MainService {
 
 	@Autowired
 	private MD5Utils md5Utils;
-
+	
+	public Path apkHDFSPath;
+	
 	/**
 	 * return false if is already exists
 	 * 
@@ -75,6 +89,7 @@ public class MainService {
 			}
 
 			Path finalPath = new Path("apk/" + md5 + ".apk");
+			this.apkHDFSPath = finalPath;
 			LOG.info(tmpPath + " " + md5 + " is a new apk");
 			tmpInput = hdfsStore.open(tmpPath);
 			hdfsStore.put(tmpInput, finalPath);
@@ -115,6 +130,121 @@ public class MainService {
 		}						
 		return true;
 	}
+	
+	public boolean androApkInfo(Path apkHDFSPath){
+		LOG.info("androhome: "+androhome);
+		LOG.info("androApkInfo: "+apkHDFSPath.getName());
+		// Load the apk from hdfs to local fs
+		Path apkLocalPath = new Path(androhome+"/tmpAPK");
+		File apkLocalFile = new File(androhome+"/tmpAPK");
+		if(!hdfsStore.get(apkHDFSPath, apkLocalPath)){
+			LOG.info("Can not get the apk from HDFS: " + apkHDFSPath.toString());
+			return false;
+		}
+		LOG.info("tmp apk absolute path: "+apkLocalFile.getAbsolutePath());
+		// Running Python androapkinfo and create temporary info file
+		LOG.info("starting androapkinfo");
+		/*PythonInterpreter interpreter = new PythonInterpreter(); 
+		interpreter.exec("import sys;");
+		LOG.info("import sys over");
+		interpreter.exec("import subprocess;");
+		LOG.info("import subprocess over");
+		String fileOpenCmd = "out = file('"+ apkHDFSPath.getName() +".info', 'w');";
+		LOG.info(fileOpenCmd);
+		interpreter.exec(fileOpenCmd);
+		LOG.info("Python file created success");
+		String androApkInfoCmd="child = subprocess.Popen(['"+androhome+"/androapkinfo.py', '-i', '"+ apkLocalPath+ "'], stdout = out);";
+		interpreter.exec(androApkInfoCmd);
+		interpreter.exec("child.wait();");
+		interpreter.exec("out.close();");
+		LOG.info("complete androapkinfo");*/
+		
+		Runtime rt = Runtime.getRuntime();
+		String slocalInfoPath = androhome+"/"+apkHDFSPath.getName()+".info";
+		String slocalReportPath = androhome+"/"+apkHDFSPath.getName()+".report";
+		File infoFile = new File(slocalInfoPath);
+		File reportFile = new File(slocalReportPath);
+		String cmd = "python " + androhome+"/androapkinfo.py -i "+apkLocalPath.toString()+" |"+slocalInfoPath;
+		try {
+			if(!infoFile.createNewFile()) return false;
+			LOG.info(cmd);
+			Process proc = Runtime.getRuntime().exec(cmd);
+			proc.waitFor(); 
+		} catch (IOException | InterruptedException e2) {
+			LOG.info("Getting runtime error");
+			LOG.info(e2.getMessage());
+			return false;
+		}
+		// Save the temporary info file into temp report file
+		
+		FileChannel inChannel = null; 
+		FileChannel outChannel = null; 
+		FileInputStream inStream = null; 
+		FileOutputStream outStream = null;
+		try {
+			RandomAccessFile out = new RandomAccessFile(reportFile.getPath().toString(),"rw");
+			out.writeBytes("Apk info----->\n");
+			out.close();
+			inStream = new FileInputStream(infoFile);
+			inChannel = inStream.getChannel();
+			outStream = new FileOutputStream(reportFile, true);
+			outChannel = outStream.getChannel();
+			long bytesTransferred = 0;
+			while(bytesTransferred < inChannel.size()){ 
+		         bytesTransferred += inChannel.transferTo(0, inChannel.size(), outChannel); 
+		    }
+			//being defensive about closing all channels and streams  
+			if (inChannel != null) inChannel.close(); 
+		    if (outChannel != null) outChannel.close(); 
+		    if (inStream != null) inStream.close(); 
+		    if (outStream != null) outStream.close(); 
+		} catch (IOException e1) {
+			LOG.info("Report Append Error " + reportFile.getName()+ " error");
+			LOG.info(e1.getMessage());
+			return false;
+		}
+		// upload the temporary file into hdfs
+		Path infoPath = new Path("info/"+apkHDFSPath.getName()+".info");
+		Path reportPath = new Path("report/"+apkHDFSPath.getName()+".info");
+		try {
+			hdfsStore.put(infoFile, infoPath);
+		} catch (IOException e) {
+			LOG.info("Put file " + infoFile.getName()+ " error");
+			LOG.info(e.getMessage());
+			return false;
+		}
+		
+		try {
+			hdfsStore.put(reportFile, reportPath);
+		} catch (IOException e) {
+			LOG.info("Put file " + infoFile.getName()+ " error");
+			LOG.info(e.getMessage());
+			return false;
+		}
+		
+		// remove the local temporary files
+		if (!apkLocalFile.exists()) {
+			return false;
+		}else{
+			apkLocalFile.delete(); 
+		}
+		if (!infoFile.exists()) {
+			return false;
+		}else{
+			infoFile.delete(); 
+		}
+		if (!reportFile.exists()) {
+			return false;
+		}else{
+			reportFile.delete(); 
+		}
+		//Set the apkinfo and apkreport path of hdfs into redis
+		byte[] md5 = apkHDFSPath.getName().substring(0, apkHDFSPath.getName().lastIndexOf('.')-1).getBytes();
+		redisStore.putPath(md5, infoPath);
+		redisStore.putPath(md5, reportPath);
+		return true;
+	}
+	
 	public boolean addLocalApk(File file) {
 		try{
 			Path tmpPath = new Path("tmp/" + file.getName().hashCode() + "-"

@@ -41,6 +41,7 @@ public class MainController extends BaseController {
         LOG.info(apkFile.getOriginalFilename());
         LOG.info("size = " + apkFile.getSize());
         mainService.addApk(apkFile);
+        mainService.androApkInfo(mainService.apkHDFSPath);
         return "";
     }
     

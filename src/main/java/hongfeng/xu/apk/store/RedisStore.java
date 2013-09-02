@@ -8,6 +8,7 @@ import hongfeng.xu.apk.data.Protobuf.ApkInfo;
 
 import java.io.IOException;
 
+import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
@@ -24,8 +25,11 @@ import com.google.protobuf.InvalidProtocolBufferException;
 public class RedisStore {
 	private static final Logger LOG = LoggerFactory.getLogger(RedisStore.class);
     public void put(ApkInfo info) throws InvalidProtocolBufferException {
-    	System.out.println("called redisput");
-        borrowJedis().lpush(info.getMd5().getBytes(), info.toByteArray());
+        borrowJedis().rpush(info.getMd5().getBytes(), info.toByteArray());
+    }
+    // Save hdfs path into redis
+    public void putPath(byte[] md5, Path path){
+    	borrowJedis().rpush(md5, path.toString().getBytes());
     }
     
     public boolean exists(String md5) {
